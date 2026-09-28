@@ -9,32 +9,122 @@ import TouchControls from '@/components/touch-controls';
 import { useGameLoop } from '@/hooks/use-game-loop';
 import { useKeyboard } from '@/hooks/use-keyboard';
 import { useTouch } from '@/hooks/use-touch';
-import { createInitialState, reduce } from '@/lib/tetris/engine';
+import { isMuted, playSound, setMuted, vibrate } from '@/lib/audio';
+import { formatTime } from '@/lib/format-time';
+import { SPRINT_LINES, createInitialState, reduce } from '@/lib/tetris/engine';
+import type { GameMode } from '@/lib/tetris/types';
 import styles from './index.module.css';
 
-const HIGH_SCORE_KEY = 'tetris-high-score';
+const MODE_KEY = 'tetris-mode';
+const MUTED_KEY = 'tetris-muted';
+const BEST_KEYS: Record<GameMode, string> = {
+  marathon: 'tetris-best-marathon',
+  sprint: 'tetris-best-sprint',
+  ultra: 'tetris-best-ultra',
+};
+const LEGACY_BEST_KEY = 'tetris-high-score';
+
+const MODE_LABELS: Record<GameMode, string> = {
+  marathon: 'Marathon',
+  sprint: 'Sprint 40L',
+  ultra: 'Ultra 2:00',
+};
+
+const MODE_HINTS: Record<GameMode, string> = {
+  marathon: 'Endless, speed rises every 10 lines',
+  sprint: `Clear ${SPRINT_LINES} lines as fast as you can`,
+  ultra: 'Score as much as you can in 2 minutes',
+};
+
+function readNumber(key: string): number {
+  const value = Number(window.localStorage.getItem(key) ?? '0');
+  return Number.isFinite(value) && value > 0 ? value : 0;
+}
 
 export default function Game() {
   const [state, dispatch] = useReducer(reduce, undefined, createInitialState);
-  const [highScore, setHighScore] = useState(0);
+  const [mode, setMode] = useState<GameMode>('marathon');
+  const [bests, setBests] = useState<Record<GameMode, number>>({
+    marathon: 0,
+    sprint: 0,
+    ultra: 0,
+  });
+  const [muted, setMutedState] = useState(false);
+  const [newRecord, setNewRecord] = useState(false);
   const stateRef = useRef(state);
   stateRef.current = state;
   const boardRef = useRef<HTMLDivElement>(null);
+  const prevLevelRef = useRef(1);
 
   useEffect(() => {
-    const stored = Number(window.localStorage.getItem(HIGH_SCORE_KEY) ?? '0');
-    if (Number.isFinite(stored) && stored > 0) setHighScore(stored);
+    setBests({
+      marathon: Math.max(readNumber(BEST_KEYS.marathon), readNumber(LEGACY_BEST_KEY)),
+      sprint: readNumber(BEST_KEYS.sprint),
+      ultra: readNumber(BEST_KEYS.ultra),
+    });
+    const storedMode = window.localStorage.getItem(MODE_KEY);
+    if (storedMode === 'marathon' || storedMode === 'sprint' || storedMode === 'ultra') {
+      setMode(storedMode);
+    }
+    const storedMuted = window.localStorage.getItem(MUTED_KEY) === '1';
+    setMuted(storedMuted);
+    setMutedState(storedMuted);
   }, []);
 
   useEffect(() => {
-    if (state.score > 0) {
-      setHighScore((prev) => {
-        if (state.score <= prev) return prev;
-        window.localStorage.setItem(HIGH_SCORE_KEY, String(state.score));
-        return state.score;
-      });
+    if (state.mode === 'sprint' || state.score === 0) return;
+    setBests((prev) => {
+      if (state.score <= prev[state.mode]) return prev;
+      window.localStorage.setItem(BEST_KEYS[state.mode], String(state.score));
+      return { ...prev, [state.mode]: state.score };
+    });
+  }, [state.score, state.mode]);
+
+  useEffect(() => {
+    if (state.status === 'over') {
+      playSound('gameOver');
+      vibrate(120);
     }
-  }, [state.score]);
+    if (state.status === 'won') {
+      playSound('big');
+      vibrate(80);
+      if (state.mode === 'sprint') {
+        const time = Math.round(state.elapsedMs);
+        setBests((prev) => {
+          const beat = prev.sprint === 0 || time < prev.sprint;
+          setNewRecord(beat);
+          if (!beat) return prev;
+          window.localStorage.setItem(BEST_KEYS.sprint, String(time));
+          return { ...prev, sprint: time };
+        });
+      }
+    }
+  }, [state.status]);
+
+  useEffect(() => {
+    if (!state.message) return;
+    const big = /Tetris|T-Spin|Perfect/.test(state.message.text);
+    playSound(big ? 'big' : 'clear');
+    vibrate(big ? 60 : 30);
+  }, [state.message]);
+
+  useEffect(() => {
+    if (state.lockFlash && state.lockFlash.elapsed === 0) {
+      playSound('lock');
+      vibrate(15);
+    }
+  }, [state.lockFlash]);
+
+  useEffect(() => {
+    if (state.shake?.magnitude === 'small') playSound('hardDrop');
+  }, [state.shake]);
+
+  useEffect(() => {
+    if (state.level > prevLevelRef.current && state.status === 'playing') {
+      playSound('levelUp');
+    }
+    prevLevelRef.current = state.level;
+  }, [state.level, state.status]);
 
   useGameLoop(state.status === 'playing', (delta) => dispatch({ type: 'tick', delta }));
 
@@ -51,34 +141,68 @@ export default function Game() {
     return () => element.removeEventListener('animationend', onEnd);
   }, [state.shake]);
 
-  const startGame = (): void => dispatch({ type: 'start', seed: Date.now() });
+  const startGame = (): void => {
+    setNewRecord(false);
+    playSound('start');
+    dispatch({ type: 'start', seed: Date.now(), mode });
+  };
+
+  const selectMode = (next: GameMode): void => {
+    setMode(next);
+    window.localStorage.setItem(MODE_KEY, next);
+  };
+
+  const toggleMute = (): void => {
+    const next = !isMuted();
+    setMuted(next);
+    setMutedState(next);
+    window.localStorage.setItem(MUTED_KEY, next ? '1' : '0');
+  };
+
+  const handleMove = (dx: -1 | 1): void => {
+    if (stateRef.current.status === 'playing') playSound('move');
+    dispatch({ type: 'move', dx });
+  };
+
+  const handleRotate = (dir: 1 | -1): void => {
+    if (stateRef.current.status === 'playing') playSound('rotate');
+    dispatch({ type: 'rotate', dir });
+  };
+
+  const handleHold = (): void => {
+    const current = stateRef.current;
+    if (current.status === 'playing' && !current.holdUsed) playSound('hold');
+    dispatch({ type: 'hold' });
+  };
 
   const handleOverlayTap = (): void => {
     const status = stateRef.current.status;
-    if (status === 'idle' || status === 'over') startGame();
+    if (status === 'idle' || status === 'over' || status === 'won') startGame();
     else if (status === 'paused') dispatch({ type: 'togglePause' });
   };
 
   useKeyboard({
-    onMove: (dx) => dispatch({ type: 'move', dx }),
-    onRotate: (dir) => dispatch({ type: 'rotate', dir }),
+    onMove: handleMove,
+    onRotate: handleRotate,
     onSoftDrop: (on) => dispatch({ type: 'softDrop', on }),
     onHardDrop: () => dispatch({ type: 'hardDrop' }),
-    onHold: () => dispatch({ type: 'hold' }),
+    onHold: handleHold,
     onPause: () => dispatch({ type: 'togglePause' }),
     onStart: () => {
       const status = stateRef.current.status;
-      if (status === 'idle' || status === 'over') startGame();
+      if (status === 'idle' || status === 'over' || status === 'won') startGame();
     },
     onRestart: startGame,
   });
 
   useTouch(boardRef, {
-    onMove: (dx) => dispatch({ type: 'move', dx }),
-    onRotate: (dir) => dispatch({ type: 'rotate', dir }),
+    onMove: handleMove,
+    onRotate: handleRotate,
     onSoftDrop: (on) => dispatch({ type: 'softDrop', on }),
     onHardDrop: () => dispatch({ type: 'hardDrop' }),
   });
+
+  const activeMode = state.status === 'idle' ? mode : state.mode;
 
   return (
     <div className={styles.game}>
@@ -87,10 +211,14 @@ export default function Game() {
       </div>
       <div className={styles.scoreArea}>
         <ScorePanel
+          mode={activeMode}
           score={state.score}
-          highScore={highScore}
+          bestScore={bests[activeMode]}
           level={state.level}
           lines={state.lines}
+          elapsedMs={state.elapsedMs}
+          muted={muted}
+          onToggleMute={toggleMute}
         />
       </div>
       <div ref={boardRef} className={styles.boardArea}>
@@ -108,6 +236,19 @@ export default function Game() {
         {state.status === 'idle' && (
           <div className={styles.overlay} onClick={handleOverlayTap}>
             <span className={styles.overlayTitle}>TETRIS</span>
+            <div className={styles.modes} onClick={(event) => event.stopPropagation()}>
+              {(['marathon', 'sprint', 'ultra'] as const).map((entry) => (
+                <button
+                  key={entry}
+                  type="button"
+                  className={entry === mode ? styles.modeActive : styles.mode}
+                  onClick={() => selectMode(entry)}
+                >
+                  {MODE_LABELS[entry]}
+                </button>
+              ))}
+            </div>
+            <span className={styles.overlayHint}>{MODE_HINTS[mode]}</span>
             <span className={styles.overlayHint}>Press Enter or tap to start</span>
             <ul className={styles.controls}>
               <li>← → — move, tap — rotate</li>
@@ -133,17 +274,31 @@ export default function Game() {
             <span className={styles.overlayHint}>Press Enter or tap to play again</span>
           </div>
         )}
+        {state.status === 'won' && (
+          <div className={styles.overlay} onClick={handleOverlayTap}>
+            <span className={styles.overlayTitle}>
+              {state.mode === 'sprint' ? 'FINISHED!' : "TIME'S UP!"}
+            </span>
+            <span className={styles.overlayScore}>
+              {state.mode === 'sprint'
+                ? formatTime(state.elapsedMs)
+                : state.score.toLocaleString('en-US')}
+            </span>
+            {newRecord && <span className={styles.overlayRecord}>New record!</span>}
+            <span className={styles.overlayHint}>Press Enter or tap to play again</span>
+          </div>
+        )}
       </div>
       <div className={styles.nextArea}>
         <NextQueue queue={state.queue} />
       </div>
       <div className={styles.controlsArea}>
         <TouchControls
-          onMove={(dx) => dispatch({ type: 'move', dx })}
-          onRotate={(dir) => dispatch({ type: 'rotate', dir })}
+          onMove={handleMove}
+          onRotate={handleRotate}
           onSoftDrop={(on) => dispatch({ type: 'softDrop', on })}
           onHardDrop={() => dispatch({ type: 'hardDrop' })}
-          onHold={() => dispatch({ type: 'hold' })}
+          onHold={handleHold}
           onPause={() => dispatch({ type: 'togglePause' })}
         />
       </div>

@@ -15,7 +15,9 @@ export interface ActivePiece {
   y: number;
 }
 
-export type GameStatus = 'idle' | 'playing' | 'paused' | 'over';
+export type GameStatus = 'idle' | 'playing' | 'paused' | 'over' | 'won';
+
+export type GameMode = 'marathon' | 'sprint' | 'ultra';
 
 export type TSpinKind = 'none' | 'mini' | 'full';
 
@@ -47,6 +49,8 @@ export interface GameState {
   queue: PieceType[];
   seed: number;
   status: GameStatus;
+  mode: GameMode;
+  elapsedMs: number;
   score: number;
   lines: number;
   level: number;
@@ -65,7 +69,7 @@ export interface GameState {
 }
 
 export type GameAction =
-  | { type: 'start'; seed: number }
+  | { type: 'start'; seed: number; mode: GameMode }
   | { type: 'tick'; delta: number }
   | { type: 'move'; dx: -1 | 1 }
   | { type: 'rotate'; dir: 1 | -1 }

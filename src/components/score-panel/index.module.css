@@ -29,6 +29,21 @@
   color: #e8ecf5;
 }
 
+.muteButton {
+  align-self: flex-start;
+  padding: 4px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: transparent;
+  color: #8b95b2;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
 @media (max-width: 720px) {
   .panel {
     flex-direction: row;

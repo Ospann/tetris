@@ -16,6 +16,7 @@ import { tryRotate } from './srs';
 import type {
   ActivePiece,
   GameAction,
+  GameMode,
   GameState,
   Rotation,
   TSpinKind,
@@ -25,6 +26,8 @@ export const LOCK_DELAY_MS = 500;
 export const MAX_LOCK_RESETS = 15;
 export const CLEARING_MS = 220;
 export const LOCK_FLASH_MS = 130;
+export const SPRINT_LINES = 40;
+export const ULTRA_MS = 120000;
 const SOFT_DROP_FACTOR = 20;
 
 const LINE_CLEAR_POINTS = [0, 100, 300, 500, 800];
@@ -46,6 +49,8 @@ export function createInitialState(): GameState {
     queue: [],
     seed: 0,
     status: 'idle',
+    mode: 'marathon',
+    elapsedMs: 0,
     score: 0,
     lines: 0,
     level: 1,
@@ -143,7 +148,7 @@ function lockPiece(state: GameState, viaHardDrop = false): GameState {
   if (perfectClear) score += PERFECT_CLEAR_POINTS[cleared] * state.level;
 
   const lines = state.lines + cleared;
-  const level = Math.floor(lines / 10) + 1;
+  const level = state.mode === 'marathon' ? Math.floor(lines / 10) + 1 : 1;
   const backToBack = cleared > 0 ? b2bEligible : state.backToBack;
 
   const parts: string[] = [];
@@ -178,6 +183,9 @@ function lockPiece(state: GameState, viaHardDrop = false): GameState {
     lockFlash: { cells, elapsed: 0 },
     clearing: null,
   };
+  if (state.mode === 'sprint' && lines >= SPRINT_LINES) {
+    return { ...next, board: collapsed, active: null, clearing: null, status: 'won' };
+  }
   if (lockOut) return { ...next, active: null, status: 'over' };
   if (cleared > 0) {
     return { ...next, active: null, clearing: { rows: fullRows, elapsed: 0 } };
@@ -186,7 +194,11 @@ function lockPiece(state: GameState, viaHardDrop = false): GameState {
 }
 
 function tick(inputState: GameState, delta: number): GameState {
-  let state = inputState;
+  let state = { ...inputState, elapsedMs: inputState.elapsedMs + delta };
+  if (state.mode === 'ultra' && state.elapsedMs >= ULTRA_MS) {
+    const board = state.clearing ? clearLines(state.board).board : state.board;
+    return { ...state, board, clearing: null, elapsedMs: ULTRA_MS, status: 'won' };
+  }
   if (state.lockFlash) {
     const elapsed = state.lockFlash.elapsed + delta;
     state = {
@@ -312,14 +324,14 @@ function holdActive(state: GameState): GameState {
   };
 }
 
-function startGame(seed: number): GameState {
-  return spawnPiece({ ...createInitialState(), seed, status: 'playing' });
+function startGame(seed: number, mode: GameMode): GameState {
+  return spawnPiece({ ...createInitialState(), seed, mode, status: 'playing' });
 }
 
 export function reduce(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case 'start':
-      return startGame(action.seed);
+      return startGame(action.seed, action.mode);
     case 'togglePause':
       if (state.status === 'playing') return { ...state, status: 'paused' };
       if (state.status === 'paused') return { ...state, status: 'playing' };

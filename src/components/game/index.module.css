@@ -140,6 +140,40 @@
   color: #9aa4bd;
 }
 
+.overlayRecord {
+  font-size: 16px;
+  font-weight: 800;
+  color: #ffd75e;
+  text-shadow: 0 0 14px rgba(255, 215, 94, 0.6);
+}
+
+.modes {
+  display: flex;
+  gap: 8px;
+}
+
+.mode,
+.modeActive {
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mode {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: transparent;
+  color: #9aa4bd;
+}
+
+.modeActive {
+  border: 1px solid rgba(126, 224, 255, 0.7);
+  background: rgba(126, 224, 255, 0.12);
+  color: #7ee0ff;
+}
+
 .controls {
   margin: 0;
   padding: 0;
