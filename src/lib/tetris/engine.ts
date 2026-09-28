@@ -23,6 +23,8 @@ import type {
 
 export const LOCK_DELAY_MS = 500;
 export const MAX_LOCK_RESETS = 15;
+export const CLEARING_MS = 220;
+export const LOCK_FLASH_MS = 130;
 const SOFT_DROP_FACTOR = 20;
 
 const LINE_CLEAR_POINTS = [0, 100, 300, 500, 800];
@@ -56,6 +58,9 @@ export function createInitialState(): GameState {
     lastAction: null,
     lastKickIndex: -1,
     message: null,
+    clearing: null,
+    lockFlash: null,
+    shake: null,
   };
 }
 
@@ -100,14 +105,19 @@ function detectTSpin(state: GameState, piece: ActivePiece): TSpinKind {
   return 'mini';
 }
 
-function lockPiece(state: GameState): GameState {
+function lockPiece(state: GameState, viaHardDrop = false): GameState {
   if (!state.active) return state;
   const piece = state.active;
   const cells = pieceCells(piece);
   const lockOut = cells.every(([, y]) => y < HIDDEN_ROWS);
   const tSpin = detectTSpin(state, piece);
   const merged = merge(state.board, piece);
-  const { board, cleared } = clearLines(merged);
+  const fullRows: number[] = [];
+  for (let y = 0; y < ROWS; y += 1) {
+    if (merged[y].every((cell) => cell !== null)) fullRows.push(y);
+  }
+  const cleared = fullRows.length;
+  const collapsed = cleared > 0 ? clearLines(merged).board : merged;
 
   let points = 0;
   let b2bEligible = false;
@@ -129,7 +139,7 @@ function lockPiece(state: GameState): GameState {
   if (combo > 0) points += 50 * combo;
 
   let score = state.score + points * state.level;
-  const perfectClear = cleared > 0 && isBoardEmpty(board);
+  const perfectClear = cleared > 0 && isBoardEmpty(collapsed);
   if (perfectClear) score += PERFECT_CLEAR_POINTS[cleared] * state.level;
 
   const lines = state.lines + cleared;
@@ -147,9 +157,16 @@ function lockPiece(state: GameState): GameState {
     ? { id: (state.message?.id ?? 0) + 1, text: `${parts.join(' ')}!` }
     : state.message;
 
+  const bigShake = cleared === 4 || (tSpin !== 'none' && cleared > 0) || perfectClear;
+  const shake = bigShake
+    ? { id: (state.shake?.id ?? 0) + 1, magnitude: 'big' as const }
+    : viaHardDrop
+      ? { id: (state.shake?.id ?? 0) + 1, magnitude: 'small' as const }
+      : state.shake;
+
   const next: GameState = {
     ...state,
-    board,
+    board: merged,
     score,
     lines,
     level,
@@ -157,12 +174,34 @@ function lockPiece(state: GameState): GameState {
     backToBack,
     holdUsed: false,
     message,
+    shake,
+    lockFlash: { cells, elapsed: 0 },
+    clearing: null,
   };
   if (lockOut) return { ...next, active: null, status: 'over' };
+  if (cleared > 0) {
+    return { ...next, active: null, clearing: { rows: fullRows, elapsed: 0 } };
+  }
   return spawnPiece(next);
 }
 
-function tick(state: GameState, delta: number): GameState {
+function tick(inputState: GameState, delta: number): GameState {
+  let state = inputState;
+  if (state.lockFlash) {
+    const elapsed = state.lockFlash.elapsed + delta;
+    state = {
+      ...state,
+      lockFlash: elapsed >= LOCK_FLASH_MS ? null : { ...state.lockFlash, elapsed },
+    };
+  }
+  if (state.clearing) {
+    const elapsed = state.clearing.elapsed + delta;
+    if (elapsed >= CLEARING_MS) {
+      const { board } = clearLines(state.board);
+      return spawnPiece({ ...state, board, clearing: null });
+    }
+    return { ...state, clearing: { ...state.clearing, elapsed } };
+  }
   if (!state.active) return state;
   let piece = state.active;
   const interval = state.softDropping
@@ -241,12 +280,15 @@ function hardDrop(state: GameState): GameState {
   if (!state.active) return state;
   const y = ghostY(state.board, state.active);
   const distance = y - state.active.y;
-  return lockPiece({
-    ...state,
-    active: { ...state.active, y },
-    score: state.score + distance * 2,
-    lastAction: distance > 0 ? 'move' : state.lastAction,
-  });
+  return lockPiece(
+    {
+      ...state,
+      active: { ...state.active, y },
+      score: state.score + distance * 2,
+      lastAction: distance > 0 ? 'move' : state.lastAction,
+    },
+    true,
+  );
 }
 
 function holdActive(state: GameState): GameState {

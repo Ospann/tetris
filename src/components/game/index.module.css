@@ -31,6 +31,81 @@
   display: none;
 }
 
+.floatMessage {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 26%;
+  padding: 0 8px;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #7ee0ff;
+  text-shadow: 0 0 18px rgba(126, 224, 255, 0.8);
+  pointer-events: none;
+  opacity: 0;
+  animation: float-message 1.3s ease-out forwards;
+}
+
+@keyframes float-message {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.8);
+  }
+  15% {
+    opacity: 1;
+    transform: translateY(0) scale(1.06);
+  }
+  30% {
+    transform: translateY(0) scale(1);
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-18px) scale(1);
+  }
+}
+
+.shakeSmall {
+  animation: shake-small 0.13s ease-out;
+}
+
+.shakeBig {
+  animation: shake-big 0.32s ease-in-out;
+}
+
+@keyframes shake-small {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  35% {
+    transform: translateY(5px);
+  }
+}
+
+@keyframes shake-big {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  20% {
+    transform: translate(-4px, 6px);
+  }
+  40% {
+    transform: translate(4px, -4px);
+  }
+  60% {
+    transform: translate(-3px, 3px);
+  }
+  80% {
+    transform: translate(2px, -2px);
+  }
+}
+
 .overlay {
   position: absolute;
   inset: 0;
@@ -103,6 +178,10 @@
 
   .overlayTitle {
     font-size: 24px;
+  }
+
+  .floatMessage {
+    font-size: 16px;
   }
 
   .controls {

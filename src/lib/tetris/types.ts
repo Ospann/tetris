@@ -24,6 +24,21 @@ export interface GameMessage {
   text: string;
 }
 
+export interface ClearingState {
+  rows: number[];
+  elapsed: number;
+}
+
+export interface LockFlashState {
+  cells: Array<[number, number]>;
+  elapsed: number;
+}
+
+export interface ShakeState {
+  id: number;
+  magnitude: 'small' | 'big';
+}
+
 export interface GameState {
   board: Board;
   active: ActivePiece | null;
@@ -44,6 +59,9 @@ export interface GameState {
   lastAction: 'move' | 'rotate' | null;
   lastKickIndex: number;
   message: GameMessage | null;
+  clearing: ClearingState | null;
+  lockFlash: LockFlashState | null;
+  shake: ShakeState | null;
 }
 
 export type GameAction =

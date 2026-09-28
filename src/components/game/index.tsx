@@ -38,6 +38,19 @@ export default function Game() {
 
   useGameLoop(state.status === 'playing', (delta) => dispatch({ type: 'tick', delta }));
 
+  useEffect(() => {
+    const element = boardRef.current;
+    const shake = state.shake;
+    if (!element || !shake) return;
+    const className = shake.magnitude === 'big' ? styles.shakeBig : styles.shakeSmall;
+    element.classList.remove(styles.shakeBig, styles.shakeSmall);
+    void element.offsetWidth;
+    element.classList.add(className);
+    const onEnd = (): void => element.classList.remove(className);
+    element.addEventListener('animationend', onEnd);
+    return () => element.removeEventListener('animationend', onEnd);
+  }, [state.shake]);
+
   const startGame = (): void => dispatch({ type: 'start', seed: Date.now() });
 
   const handleOverlayTap = (): void => {
@@ -78,11 +91,20 @@ export default function Game() {
           highScore={highScore}
           level={state.level}
           lines={state.lines}
-          message={state.message}
         />
       </div>
       <div ref={boardRef} className={styles.boardArea}>
-        <BoardCanvas board={state.board} active={state.active} />
+        <BoardCanvas
+          board={state.board}
+          active={state.active}
+          clearing={state.clearing}
+          lockFlash={state.lockFlash}
+        />
+        {state.message && (
+          <div key={state.message.id} className={styles.floatMessage}>
+            {state.message.text}
+          </div>
+        )}
         {state.status === 'idle' && (
           <div className={styles.overlay} onClick={handleOverlayTap}>
             <span className={styles.overlayTitle}>TETRIS</span>

@@ -1,6 +1,5 @@
 'use client';
 
-import type { GameMessage } from '@/lib/tetris/types';
 import styles from './index.module.css';
 
 interface ScorePanelProps {
@@ -8,10 +7,9 @@ interface ScorePanelProps {
   highScore: number;
   level: number;
   lines: number;
-  message: GameMessage | null;
 }
 
-export default function ScorePanel({ score, highScore, level, lines, message }: ScorePanelProps) {
+export default function ScorePanel({ score, highScore, level, lines }: ScorePanelProps) {
   return (
     <section className={styles.panel}>
       <div className={styles.row}>
@@ -29,13 +27,6 @@ export default function ScorePanel({ score, highScore, level, lines, message }: 
       <div className={styles.row}>
         <span className={styles.label}>Lines</span>
         <span className={styles.value}>{lines}</span>
-      </div>
-      <div className={styles.messageSlot}>
-        {message && (
-          <span key={message.id} className={styles.message}>
-            {message.text}
-          </span>
-        )}
       </div>
     </section>
   );
