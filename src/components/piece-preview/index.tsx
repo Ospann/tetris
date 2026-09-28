@@ -23,12 +23,14 @@ export default function PiecePreview({ type }: PiecePreviewProps) {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
     const dpr = window.devicePixelRatio || 1;
-    if (canvas.width !== WIDTH * dpr) {
-      canvas.width = WIDTH * dpr;
-      canvas.height = HEIGHT * dpr;
-    }
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const bufferWidth = Math.max(1, Math.round(rect.width * dpr));
+    const bufferHeight = Math.max(1, Math.round(rect.height * dpr));
+    if (canvas.width !== bufferWidth) canvas.width = bufferWidth;
+    if (canvas.height !== bufferHeight) canvas.height = bufferHeight;
+    ctx.setTransform(bufferWidth / WIDTH, 0, 0, bufferHeight / HEIGHT, 0, 0);
     ctx.clearRect(0, 0, WIDTH, HEIGHT);
     if (!type) return;
 

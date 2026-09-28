@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { COLS, HIDDEN_ROWS, ROWS, ghostY, pieceCells } from '@/lib/tetris/board';
 import { CLEARING_MS, LOCK_FLASH_MS } from '@/lib/tetris/engine';
 import { drawCell, drawGhostCell } from '@/lib/tetris/render';
@@ -20,6 +20,15 @@ interface BoardCanvasProps {
 
 export default function BoardCanvas({ board, active, clearing, lockFlash }: BoardCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [resizeTick, setResizeTick] = useState(0);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => setResizeTick((tick) => tick + 1));
+    observer.observe(canvas);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -27,29 +36,24 @@ export default function BoardCanvas({ board, active, clearing, lockFlash }: Boar
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
     const dpr = window.devicePixelRatio || 1;
-    if (canvas.width !== WIDTH * dpr) {
-      canvas.width = WIDTH * dpr;
-      canvas.height = HEIGHT * dpr;
-    }
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const bufferWidth = Math.max(1, Math.round(rect.width * dpr));
+    const bufferHeight = Math.max(1, Math.round(rect.height * dpr));
+    if (canvas.width !== bufferWidth) canvas.width = bufferWidth;
+    if (canvas.height !== bufferHeight) canvas.height = bufferHeight;
+    ctx.setTransform(bufferWidth / WIDTH, 0, 0, bufferHeight / HEIGHT, 0, 0);
 
     ctx.fillStyle = '#0b101f';
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-    ctx.lineWidth = 1;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
     for (let x = 1; x < COLS; x += 1) {
-      ctx.beginPath();
-      ctx.moveTo(x * CELL + 0.5, 0);
-      ctx.lineTo(x * CELL + 0.5, HEIGHT);
-      ctx.stroke();
+      ctx.fillRect(x * CELL - 0.5, 0, 1, HEIGHT);
     }
     for (let y = 1; y < ROWS - HIDDEN_ROWS; y += 1) {
-      ctx.beginPath();
-      ctx.moveTo(0, y * CELL + 0.5);
-      ctx.lineTo(WIDTH, y * CELL + 0.5);
-      ctx.stroke();
+      ctx.fillRect(0, y * CELL - 0.5, WIDTH, 1);
     }
 
     for (let y = HIDDEN_ROWS; y < ROWS; y += 1) {
@@ -100,7 +104,7 @@ export default function BoardCanvas({ board, active, clearing, lockFlash }: Boar
         ctx.fillRect(0, top + (CELL - bandHeight) / 2, WIDTH, bandHeight);
       }
     }
-  }, [board, active, clearing, lockFlash]);
+  }, [board, active, clearing, lockFlash, resizeTick]);
 
   return <canvas ref={canvasRef} className={styles.canvas} />;
 }
