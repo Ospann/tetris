@@ -1,0 +1,111 @@
+.game {
+  display: grid;
+  grid-template-areas:
+    'hold board next'
+    'score board next'
+    '. board next';
+  grid-template-columns: 170px auto 170px;
+  grid-template-rows: auto auto 1fr;
+  gap: 20px;
+}
+
+.holdArea {
+  grid-area: hold;
+}
+
+.scoreArea {
+  grid-area: score;
+}
+
+.boardArea {
+  grid-area: board;
+  position: relative;
+  touch-action: none;
+}
+
+.nextArea {
+  grid-area: next;
+}
+
+.controlsArea {
+  display: none;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: rgba(5, 8, 16, 0.84);
+  border-radius: 10px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.overlayTitle {
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: 6px;
+  color: #e8ecf5;
+  text-shadow: 0 0 24px rgba(126, 224, 255, 0.45);
+}
+
+.overlayScore {
+  font-size: 26px;
+  font-weight: 700;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: #7ee0ff;
+}
+
+.overlayHint {
+  font-size: 14px;
+  color: #9aa4bd;
+}
+
+.controls {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: #9aa4bd;
+}
+
+@media (max-width: 720px) {
+  .game {
+    grid-template-areas:
+      'hold score next'
+      'board board board'
+      'controls controls controls';
+    grid-template-columns: auto 1fr auto;
+    grid-template-rows: auto auto auto;
+    gap: 10px;
+    width: 100%;
+    justify-items: center;
+  }
+
+  .holdArea,
+  .scoreArea,
+  .nextArea {
+    width: 100%;
+  }
+
+  .controlsArea {
+    grid-area: controls;
+    display: block;
+    width: 100%;
+  }
+
+  .overlayTitle {
+    font-size: 24px;
+  }
+
+  .controls {
+    font-size: 12px;
+  }
+}

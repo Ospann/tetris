@@ -1,0 +1,15 @@
+.main {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+@media (max-width: 720px) {
+  .main {
+    min-height: 100dvh;
+    align-items: flex-start;
+    padding: 8px 12px 16px;
+  }
+}

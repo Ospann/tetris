@@ -1,0 +1,56 @@
+.controls {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.cluster {
+  display: flex;
+  gap: 6px;
+}
+
+.clusterSmall {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.button {
+  width: clamp(38px, 11vw, 52px);
+  aspect-ratio: 1;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(20, 27, 50, 0.9);
+  color: #e8ecf5;
+  font-size: clamp(16px, 5vw, 22px);
+  line-height: 1;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.button:active {
+  background: rgba(60, 80, 140, 0.9);
+}
+
+.smallButton {
+  padding: 5px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  background: rgba(20, 27, 50, 0.9);
+  color: #9aa4bd;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.smallButton:active {
+  background: rgba(60, 80, 140, 0.9);
+}

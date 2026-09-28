@@ -1,0 +1,16 @@
+.canvas {
+  display: block;
+  width: 300px;
+  height: 600px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 48px rgba(70, 120, 220, 0.16);
+}
+
+@media (max-width: 720px) {
+  .canvas {
+    width: min(300px, calc(100vw - 24px), calc((100dvh - 280px) / 2));
+    height: auto;
+    aspect-ratio: 1 / 2;
+  }
+}

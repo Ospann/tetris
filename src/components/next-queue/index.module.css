@@ -1,0 +1,41 @@
+.panel {
+  background: rgba(15, 20, 38, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.title {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: #8b95b2;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+@media (max-width: 720px) {
+  .panel {
+    padding: 10px;
+  }
+
+  .title {
+    margin-bottom: 6px;
+  }
+
+  .list {
+    flex-direction: row;
+    gap: 4px;
+  }
+
+  .list > :nth-child(n + 3) {
+    display: none;
+  }
+}
